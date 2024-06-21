@@ -30,10 +30,9 @@ llm = ChatOpenAI(model="gpt-4o", api_key=openai_api_key)
 
 # Contextualize question
 question_prefix = (
-    "Given a chat history and the latest user question "
-    "which might reference context in the chat history, "
-    "formulate a standalone question which can be understood "
-    "without the chat history. Do NOT answer the question, "
+    "Given a chat history (if any) and the latest user question, "
+    "formulate a standalone question. "
+    "Do NOT answer the question, "
     "just reformulate it if needed and otherwise return it as is."
 )
 
@@ -67,6 +66,7 @@ qa_prompt = ChatPromptTemplate.from_messages(
         ("human", "{input}"),
     ]
 )
+
 question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
 
 # Initialize chain
@@ -92,39 +92,35 @@ conversational_rag_chain = RunnableWithMessageHistory(
 def main():
     st.set_page_config(page_title="Chat-Assist")
     st.title("Chat-Assist")
-    st.subheader("Gym-Buddy")
-
+    st.write( "Hello! How can I help you today?")
+    
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     if "user_input" not in st.session_state:
         st.session_state.user_input = ""
-
+    
     user_input = st.text_input("Start typing...", value=st.session_state.user_input, key="user_input")
     
     if st.button("Send"):
         if user_input:
             st.session_state.chat_history.append({"type": "human", "content": user_input})
-            
             # Perform question answering
             response = conversational_rag_chain.invoke(
                             {"input": user_input},
                             config={
                                 "configurable": {"session_id": "abc123"}
                             },  # constructs a key "abc123" in `store`.
-                        )["answer"]
-                        
-            st.session_state.chat_history.append({"type": "ai", "content": response})
-
+                        )
+            answer = response["answer"]
+            st.session_state.chat_history.append({"type": "ai", "content": answer})
             # Re-run the Streamlit app to reflect changes
             st.rerun()
 
     # Display chat history
     for message in st.session_state.chat_history:
-        if message["type"] == "human":
-            st.markdown(f"**Human:** {message['content']}")
-        else:
-            st.markdown(f"**Assistant:** {message['content']}")
+        with st.chat_message(message["type"]):
+            st.markdown(message["content"])
 
 if __name__ == "__main__":
     main()
