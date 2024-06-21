@@ -90,9 +90,9 @@ conversational_rag_chain = RunnableWithMessageHistory(
 )
 
 def main():
-    st.set_page_config(page_title="Chat-Assist")
-    st.title("Chat-Assist")
-    st.write( "Hello! How can I help you today?")
+    st.set_page_config(page_title="LyfeGym-Bot")
+    st.title("Sam from LyfeGym")
+    st.info( "Hello! I am Samantha. I am here to answer any question you may have about the gym and our services. How may I help you today?")
     
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
@@ -100,6 +100,12 @@ def main():
     if "user_input" not in st.session_state:
         st.session_state.user_input = ""
     
+    # Display chat history
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["type"]):
+            st.markdown(message["content"])
+    
+    # Get user input
     user_input = st.text_input("Start typing...", value=st.session_state.user_input, key="user_input")
     
     if st.button("Send"):
@@ -116,11 +122,6 @@ def main():
             st.session_state.chat_history.append({"type": "ai", "content": answer})
             # Re-run the Streamlit app to reflect changes
             st.rerun()
-
-    # Display chat history
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["type"]):
-            st.markdown(message["content"])
 
 if __name__ == "__main__":
     main()
