@@ -72,54 +72,56 @@ question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
 # Initialize chain
 rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
-### Statefully manage chat history ###
-store = {}
-
-
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
-    if session_id not in store:
-        store[session_id] = ChatMessageHistory()
-    return store[session_id]
-
-conversational_rag_chain = RunnableWithMessageHistory(
-    rag_chain,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="chat_history",
-    output_messages_key="answer",
-)
+### Use Streamlit session state for chat history ###
+def convert_to_chat_message_history(session_history) -> BaseChatMessageHistory:
+    chat_history = ChatMessageHistory()
+    for message in session_history:
+        if message["type"] == "human":
+            chat_history.add_user_message(message["content"])
+        else:
+            chat_history.add_ai_message(message["content"])
+    return chat_history
 
 def main():
     st.set_page_config(page_title="LyfeGym-Bot")
     st.title("Sam from LyfeGym")
-    st.info( "Hello! I am Samantha. I am here to answer any question you may have about the gym and our services. How may I help you today?")
+    st.info("Hello! I am Samantha. I am here to answer any question you may have about the gym and our services. How may I help you today?")
     
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    if "user_input" not in st.session_state:
-        st.session_state.user_input = ""
-    
     # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["type"]):
             st.markdown(message["content"])
     
     # Get user input
-    user_input = st.text_input("Start typing...", value=st.session_state.user_input, key="user_input")
+    user_input = st.text_input("Start typing...", key="user_input")
     
     if st.button("Send"):
         if user_input:
             st.session_state.chat_history.append({"type": "human", "content": user_input})
+            
+            # Convert session state chat history to ChatMessageHistory
+            chat_history = convert_to_chat_message_history(st.session_state.chat_history)
+            
             # Perform question answering
+            conversational_rag_chain = RunnableWithMessageHistory(
+                rag_chain,
+                lambda _: chat_history,
+                input_messages_key="input",
+                history_messages_key="chat_history",
+                output_messages_key="answer",
+            )
+            
             response = conversational_rag_chain.invoke(
-                            {"input": user_input},
-                            config={
-                                "configurable": {"session_id": "abc123"}
-                            },  # constructs a key "abc123" in `store`.
-                        )
+                {"input": user_input},
+                config={"configurable": {"session_id": "abc123"}}
+            )
+            
             answer = response["answer"]
             st.session_state.chat_history.append({"type": "ai", "content": answer})
+            
             # Re-run the Streamlit app to reflect changes
             st.rerun()
 
