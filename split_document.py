@@ -25,8 +25,14 @@ try:
         separators=["\n\n", "\n", " ", ""]
     )
     split_texts = text_splitter.split_text(text)
+    
+    # # Print each split text chunk to the console to see the output
+    # for i, chunk in enumerate(split_texts):
+    #     print(f"Chunk {i+1}:")
+    #     print(chunk)
+    #     print("\n" + "-"*80 + "\n")  # Separator line between chunks for readability
 
-    # print(split_texts)
+
     # Create document objects
     docs = [Document(page_content=chunk) for chunk in split_texts]
     
